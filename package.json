@@ -1,0 +1,9 @@
+{
+  "private": true,
+  "workspaces": [
+    "react",
+    "koa",
+    "demo",
+    "demo-server"
+  ]
+}
