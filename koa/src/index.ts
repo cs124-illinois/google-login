@@ -11,7 +11,7 @@ export const googleLogin = (options: GoogleLoginOptions): Middleware => {
   if (!options.audience || !options.audience[0]) {
     throw Error("Empty audience array")
   }
-  const googleClient = new OAuth2Client(options.audience[0])
+  const googleClient = new OAuth2Client()
   return async (ctx: Context, next: Next) => {
     try {
       const googlePayload = await googleClient
