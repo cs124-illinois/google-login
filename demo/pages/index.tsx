@@ -19,7 +19,6 @@ const GoogleLoginDemo: React.FC = () => {
         if (email !== profile?.email) {
           throw new Error("Demo server not working")
         }
-        console.log("OK")
       })
   }, [idToken, profile])
 
