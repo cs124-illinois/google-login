@@ -1,5 +1,5 @@
 import PropTypes from "prop-types"
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react"
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
 
 export interface GoogleLoginContext extends GoogleAuthContext, GoogleUserContext, GoogleTokensContext {
   available: boolean
@@ -43,7 +43,7 @@ export interface GoogleAuth {
     scope: string
     ux_mode: string
     redirect_uri: string
-  }) => Promise<GoogleUser> | void
+  }) => Promise<GoogleUser | void>
   signOut: () => Promise<void>
   disconnect: () => void
   grantOfflineAccess: (options: OfflineAccessOptions) => Promise<{ code: string }>
@@ -138,6 +138,8 @@ export const GoogleLoginProvider: React.FC<GoogleLoginProviderProps> = ({
   children,
   refreshRate = 30 * 60 * 1000,
 }) => {
+  const lastRefresh = useRef<number>(0)
+
   const [auth, setAuth] = useState<GoogleAuthContext>({ auth: null, ready: false, err: undefined })
   const [user, setUser] = useState<GoogleUserContext>({
     user: null,
@@ -152,9 +154,10 @@ export const GoogleLoginProvider: React.FC<GoogleLoginProviderProps> = ({
       return NO_TOKENS
     }
     const { idToken, accessToken, saved } = JSON.parse(savedTokens)
-    if (!saved || saved + 30 * 60 * 1000 < new Date().valueOf()) {
+    if (!saved || saved + 30 * 60 * 1000 < Date.now()) {
       return NO_TOKENS
     }
+    lastRefresh.current = saved
     return { idToken, accessToken }
   }, [])
   const [tokens, setTokens] = useState<GoogleTokensContext>(initialTokens)
@@ -177,7 +180,6 @@ export const GoogleLoginProvider: React.FC<GoogleLoginProviderProps> = ({
             } else {
               setProfile(getProfile(newUser))
             }
-            newUser.isSignedIn()
           })
         },
         (err) => {
@@ -219,7 +221,7 @@ export const GoogleLoginProvider: React.FC<GoogleLoginProviderProps> = ({
       localStorage.removeItem("react-google-login:tokens")
       return
     }
-    localStorage.setItem("react-google-login:tokens", JSON.stringify({ ...tokens, saved: new Date().valueOf() }))
+    localStorage.setItem("react-google-login:tokens", JSON.stringify({ ...tokens, saved: Date.now() }))
   }, [tokens])
 
   useEffect(() => {
@@ -228,10 +230,12 @@ export const GoogleLoginProvider: React.FC<GoogleLoginProviderProps> = ({
     }
     const refreshTokens = async () => {
       if (!user.user) {
+        setTokens(NO_TOKENS)
         return
       }
       const { id_token: idToken, access_token: accessToken } = await user.user.reloadAuthResponse()
       setTokens({ idToken, accessToken })
+      lastRefresh.current = Date.now()
     }
     const refreshTimer = setInterval(async () => {
       await refreshTokens()
